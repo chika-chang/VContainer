@@ -1,0 +1,109 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ output extension=".cs" #>
+<#
+    var lifetimes = new[]
+    {
+        "Singleton",
+        "Scoped",
+        "Transient"
+    };
+    var initTimings = new[]
+    {
+        "Initializable",
+        "PostInitializable",
+        "Startable",
+        "PostStartable"
+    };
+    var fixedTimings = new[]
+    {
+        "FixedTickable",
+        "PostFixedTickable"
+    };
+    var timings = new[]
+    {
+        "Tickable",
+        "PostTickable",
+        "LateTickable",
+        "PostLateTickable"
+    };
+#>
+using System.Collections;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+using VContainer.Unity;
+
+namespace VContainer.Tests.Unity
+{
+<# foreach(var l in lifetimes) { #>
+    [TestFixture(Lifetime.<#= l #>)]
+<# } #>
+    public class EntryPointTimingThrowingTest
+    {
+        readonly Lifetime _lifetime;
+
+        public EntryPointTimingThrowingTest(Lifetime lifetime)
+        {
+            _lifetime = lifetime;
+        }
+<# foreach(var t in initTimings) { #>
+
+        [UnityTest]
+        public IEnumerator <#= t #>ExceptionHandler()
+        {
+            var handled = 0;
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<<#= t #>Throwable>(_lifetime).AsSelf();
+                builder.RegisterEntryPointExceptionHandler(ex => { handled += 1; });
+            });
+            yield return null;
+            if (_lifetime == Lifetime.Transient)
+                Assert.That(handled, Is.EqualTo(0));
+            else
+                Assert.That(handled, Is.EqualTo(1));
+            lifetimeScope.Dispose();
+        }
+<# } #>
+<# foreach(var t in fixedTimings) { #>
+
+        [UnityTest]
+        public IEnumerator <#= t #>ExceptionHandler()
+        {
+            var handled = 0;
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<<#= t #>Throwable>(_lifetime).AsSelf();
+                builder.RegisterEntryPointExceptionHandler(ex => { handled += 1; });
+            });
+            yield return new WaitForFixedUpdate();
+            yield return null;
+            if (_lifetime == Lifetime.Transient)
+                Assert.That(handled, Is.EqualTo(0));
+            else
+                Assert.That(handled, Is.EqualTo(1));
+            lifetimeScope.Dispose();
+        }
+<# } #>
+<# foreach(var t in timings) { #>
+
+        [UnityTest]
+        public IEnumerator <#= t #>ExceptionHandler()
+        {
+            var handled = 0;
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<<#= t #>Throwable>(_lifetime).AsSelf();
+                builder.RegisterEntryPointExceptionHandler(ex => { handled += 1; });
+            });
+            yield return null;
+            if (_lifetime == Lifetime.Transient)
+                Assert.That(handled, Is.EqualTo(0));
+            else
+                Assert.That(handled, Is.EqualTo(1));
+            lifetimeScope.Dispose();
+        }
+<# } #>
+    }
+}

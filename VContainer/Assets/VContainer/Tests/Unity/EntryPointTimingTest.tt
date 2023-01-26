@@ -1,0 +1,157 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ output extension=".cs" #>
+<#
+    var lifetimes = new[]
+    {
+        "Singleton",
+        "Scoped",
+        "Transient"
+    };
+    var initTimings = new[]
+    {
+        "Initialize",
+        "PostInitialize",
+        "Start",
+        "PostStart"
+    };
+    var fixedTimings = new[]
+    {
+        "FixedTick",
+        "PostFixedTick"
+    };
+    var timings = new[]
+    {
+        "Tick",
+        "PostTick",
+        "LateTick",
+        "PostLateTick"
+    };
+#>
+using System.Collections;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+using VContainer.Unity;
+
+namespace VContainer.Tests.Unity
+{
+<# foreach(var l in lifetimes) { #>
+    [TestFixture(Lifetime.<#= l #>)]
+<# } #>
+    public class EntryPointTimingTest
+    {
+        readonly Lifetime _lifetime;
+
+        public EntryPointTimingTest(Lifetime lifetime)
+        {
+            _lifetime = lifetime;
+        }
+
+        [Test]
+        public void InstanceOf()
+        {
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<SampleEntryPoint>(_lifetime).AsSelf();
+            });
+            var entryPoint = lifetimeScope.Container.Resolve<SampleEntryPoint>();
+            Assert.That(entryPoint, Is.InstanceOf<SampleEntryPoint>());
+            lifetimeScope.Dispose();
+        }
+<# foreach(var t in initTimings) { #>
+
+        [UnityTest]
+        public IEnumerator <#= t #>Called()
+        {
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<SampleEntryPoint>(_lifetime).AsSelf();
+            });
+            var entryPoint = lifetimeScope.Container.Resolve<SampleEntryPoint>();
+            yield return null;
+            Assert.That(entryPoint.<#= t #>Called, Is.EqualTo(1));
+            lifetimeScope.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator Dispose<#= t #>Called()
+        {
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<SampleEntryPoint>(_lifetime).AsSelf();
+            });
+            var entryPoint = lifetimeScope.Container.Resolve<SampleEntryPoint>();
+            yield return null;
+            entryPoint.<#= t #>Called = 0;
+            lifetimeScope.Dispose();
+            yield return null;
+            Assert.That(entryPoint.<#= t #>Called, Is.EqualTo(0));
+        }
+<# } #>
+<# foreach(var t in fixedTimings) { #>
+
+        [UnityTest]
+        public IEnumerator <#= t #>Calls()
+        {
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<SampleEntryPoint>(_lifetime).AsSelf();
+            });
+            var entryPoint = lifetimeScope.Container.Resolve<SampleEntryPoint>();
+            yield return new WaitForFixedUpdate();
+            entryPoint.<#= t #>Calls = 0;
+            yield return new WaitForFixedUpdate();
+            Assert.That(entryPoint.<#= t #>Calls, Is.EqualTo(1));
+            lifetimeScope.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator Dispose<#= t #>Calls()
+        {
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<SampleEntryPoint>(_lifetime).AsSelf();
+            });
+            var entryPoint = lifetimeScope.Container.Resolve<SampleEntryPoint>();
+            yield return new WaitForFixedUpdate();
+            entryPoint.<#= t #>Calls = 0;
+            lifetimeScope.Dispose();
+            yield return null;
+            Assert.That(entryPoint.<#= t #>Calls, Is.EqualTo(0));
+        }
+<# } #>
+<# foreach(var t in timings) { #>
+
+        [UnityTest]
+        public IEnumerator <#= t #>Calls()
+        {
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<SampleEntryPoint>(_lifetime).AsSelf();
+            });
+            var entryPoint = lifetimeScope.Container.Resolve<SampleEntryPoint>();
+            yield return null;
+            entryPoint.<#= t #>Calls = 0;
+            yield return null;
+            Assert.That(entryPoint.<#= t #>Calls, Is.EqualTo(1));
+            lifetimeScope.Dispose();
+        }
+
+        [UnityTest]
+        public IEnumerator Dispose<#= t #>Calls()
+        {
+            var lifetimeScope = LifetimeScope.Create(builder =>
+            {
+                builder.RegisterEntryPoint<SampleEntryPoint>(_lifetime).AsSelf();
+            });
+            var entryPoint = lifetimeScope.Container.Resolve<SampleEntryPoint>();
+            yield return null;
+            entryPoint.<#= t #>Calls = 0;
+            lifetimeScope.Dispose();
+            yield return null;
+            Assert.That(entryPoint.<#= t #>Calls, Is.EqualTo(0));
+        }
+<# } #>
+    }
+}
